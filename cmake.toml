@@ -5,3 +5,7 @@ description = "A minimal cmkr project."
 [target.hello_world]
 type = "executable"
 sources = ["src/main.cpp"]
+
+[[install]]
+targets = ["hello_world"]
+destination = "bin"

@@ -14,12 +14,41 @@ jobs:
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v2
+    
     - name: Compile with gcc 10 on ubuntu
       if: ${{ matrix.os == 'ubuntu-20.04' }}
       run: |
          echo "CC=gcc-10" >> $GITHUB_ENV
          echo "CXX=g++-10" >> $GITHUB_ENV
+    
     - name: Build
       run: |
-        cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMKR_SKIP_GENERATION=ON
         cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        cmake --install build --prefix ./install --config ${{ env.BUILD_TYPE }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ github.event.repository.name }}-${{ matrix.os }}
+        path: install/bin/*
+
+    - name: Get lowercase OS name
+      id: osname
+      uses: ASzc/change-string-case-action@v1
+      with:
+        string: ${{ runner.os }}
+
+    - name: Compress artifacts
+      uses: papeloto/action-zip@v1
+      with:
+        files: install/bin/
+        dest: ${{ github.event.repository.name }}-${{ steps.osname.outputs.lowercase }}.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ${{ github.event.repository.name }}-${{ steps.osname.outputs.lowercase }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
