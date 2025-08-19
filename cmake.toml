@@ -2,9 +2,16 @@
 name = "cmkr_for_beginners"
 description = "A minimal cmkr project."
 
+[options]
+TEST_RELEASE = false
+
 [target.hello_world]
 type = "executable"
 sources = ["src/main.cpp"]
+cmake-after = """
+message(STATUS "TEST_RELEASE: '${TEST_RELEASE}'")
+"""
+TEST_RELEASE.compile-definitions = ["TEST_RELEASE"]
 
 [[install]]
 targets = ["hello_world"]

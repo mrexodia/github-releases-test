@@ -3,12 +3,15 @@
 
 cmake_minimum_required(VERSION 3.15)
 
-# Regenerate CMakeLists.txt automatically in the root project
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+	message(FATAL_ERROR "In-tree builds are not supported. Run CMake from a separate directory: cmake -B build")
+endif()
+
 set(CMKR_ROOT_PROJECT OFF)
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 	set(CMKR_ROOT_PROJECT ON)
 
-	# Bootstrap cmkr
+	# Bootstrap cmkr and automatically regenerate CMakeLists.txt
 	include(cmkr.cmake OPTIONAL RESULT_VARIABLE CMKR_INCLUDE_RESULT)
 	if(CMKR_INCLUDE_RESULT)
 		cmkr()
@@ -16,35 +19,34 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 
 	# Enable folder support
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+	# Create a configure-time dependency on cmake.toml to improve IDE support
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS cmake.toml)
 endif()
 
-# Create a configure-time dependency on cmake.toml to improve IDE support
-if(CMKR_ROOT_PROJECT)
-	configure_file(cmake.toml cmake.toml COPYONLY)
-endif()
+# Options
+option(TEST_RELEASE "" OFF)
 
 project(cmkr_for_beginners
 	DESCRIPTION
 		"A minimal cmkr project."
 )
 
-# Target hello_world
-set(CMKR_TARGET hello_world)
-set(hello_world_SOURCES "")
-
-list(APPEND hello_world_SOURCES
+# Target: hello_world
+set(hello_world_SOURCES
+	cmake.toml
 	"src/main.cpp"
 )
 
-list(APPEND hello_world_SOURCES
-	cmake.toml
-)
-
-set(CMKR_SOURCES ${hello_world_SOURCES})
 add_executable(hello_world)
 
-if(hello_world_SOURCES)
-	target_sources(hello_world PRIVATE ${hello_world_SOURCES})
+target_sources(hello_world PRIVATE ${hello_world_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${hello_world_SOURCES})
+
+if(TEST_RELEASE) # TEST_RELEASE
+	target_compile_definitions(hello_world PRIVATE
+		TEST_RELEASE
+	)
 endif()
 
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
@@ -52,10 +54,9 @@ if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT hello_world)
 endif()
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${hello_world_SOURCES})
+set(CMKR_TARGET hello_world)
+message(STATUS "TEST_RELEASE: '${TEST_RELEASE}'")
 
-unset(CMKR_TARGET)
-unset(CMKR_SOURCES)
 install(
 	TARGETS
 		hello_world
